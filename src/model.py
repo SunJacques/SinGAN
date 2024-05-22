@@ -30,7 +30,7 @@ class Generator (nn.Module):
         self.head = ConvBlock(opt.in_channel, N, 3, 1, 1)
         
         self.body = nn.Sequential()
-        for i in range(5):
+        for i in range(3):
             N = int(N / pow(2, i))
             block = ConvBlock(max(2*N,32), max(N,32), 3, 1, 1)
             self.body.add_module('block%d'%(i+1),block)
@@ -56,7 +56,7 @@ class Discriminator(nn.Module):
         self.head = ConvBlock(opt.in_channel, N, 3, 1, 1)
         
         self.body = nn.Sequential()
-        for i in range(5):
+        for i in range(3):
             N = int(N / pow(2, i))
             block = ConvBlock(max(2*N,32), max(N,32), 3, 1, 1)
             self.body.add_module('block%d'%(i+1),block)
