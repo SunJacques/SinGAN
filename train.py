@@ -2,16 +2,19 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import math
+from src.functions import create_reals
 
 from src.model import *
 
 def train(opt, Gs, Zs, reals, NoiseAmp):
     scale = 0
     
+    reals = create_reals(opt)
+    
     while scale < opt.scale_max:
         opt.n_kernel = min(opt.n_kernel_init * pow(2, math.floor(scale / 4)), 128) #double the number of filters every 4 scales
         opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale / 4)), 128)
-
+        
         D_curr, G_curr = init_models(opt, scale)
         
         z_curr, G_curr = train_single_scale(D_curr, G_curr, reals, Gs, Zs, NoiseAmp, opt)
