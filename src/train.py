@@ -4,21 +4,28 @@ import torch.optim as optim
 import math
 import matplotlib.pyplot as plt
 from src.functions import *
+import os
 
 from src.model import *
 
 def train(opt, Gs, Zs, reals, NoiseAmp):
+    torch.autograd.set_detect_anomaly(True)
     scale = 0
     reals = create_reals(opt)
     
-    while scale < opt.scale_max:
+    while scale < opt.stop_scale + 1:
         opt.out_ = generate_dir2save(opt)
-        opt.outf = '%s/%d' % (opt.out_,scale)
+        opt.outf = '%s/%d' % (opt.out_, scale)
+        
+        try:
+            os.makedirs(opt.outf)
+        except OSError:
+                pass
         
         plt.imsave('%s/real_scale.png' %  (opt.outf), convert_image_np(reals[scale]), vmin=0, vmax=1)
         
-        opt.n_kernel = min(opt.n_kernel_init * pow(2, math.floor(scale / 4)), 128) #double the number of filters every 4 scales
-        opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale / 4)), 128)
+        # opt.n_kernel = min(opt.n_kernel_init * pow(2, math.floor(scale / 4)), 128) #double the number of filters every 4 scales
+        # opt.min_nfc = min(opt.min_nfc_init * pow(2, math.floor(scale / 4)), 128)
 
         D_curr, G_curr = init_models(opt, scale)
         
@@ -36,14 +43,14 @@ def train(opt, Gs, Zs, reals, NoiseAmp):
 def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
     real = reals[len(Gs)]
     
-    z_x = real.shape[0]
-    z_y = real.shape[1]
-    fixed_noise = generate_noise(opt.nc_z, [opt.nzx, opt.nzy])
-    z_opt = torch.full(fixed_noise.shape, 0, device=opt.device)
-    z_opt = m_pad(z_opt)
-    
     pad = int(((opt.ker_size - 1) * opt.num_layer) / 2)
     m_pad = nn.ZeroPad2d(pad)
+    
+    z_x = real.shape[2]
+    z_y = real.shape[3]
+    fixed_noise = generate_noise(3, [z_x, z_y],opt)
+    z_opt = torch.full(fixed_noise.shape, 0, device=opt.device)
+    z_opt = m_pad(z_opt)
     
     alpha = opt.alpha
     
@@ -53,12 +60,12 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
     
     for epoch in range(opt.niter):
         if (Gs == []):
-            z_opt = generate_noise(opt.nc_z, [z_x, z_y])
-            z_opt = m_pad(z_opt)
-            noise_ = generate_noise(opt.nc_z, [z_x, z_y])
-            noise_ = m_pad(noise_)
+            z_opt = generate_noise(1, [z_x, z_y],opt)
+            z_opt = m_pad(z_opt.expand(1,3,z_opt.shape[2],z_opt.shape[3]))
+            noise_ = generate_noise(1, [z_x, z_y],opt)
+            noise_ = m_pad(noise_.expand(1,3, noise_.shape[2], noise_.shape[3]))
         else:
-            noise_ = generate_noise(opt.nc_z, [z_x, z_y])
+            noise_ = generate_noise(opt.nc_z, [z_x, z_y],opt)
             noise_ = m_pad(noise_)
             
         ############################
@@ -76,11 +83,21 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             # train with fake
             
             if j==0 and epoch == 0:
-                prev = torch.full([1,opt.nc_z,opt.nzx,opt.nzy], 0, device=opt.device)
-                prev = m_pad(prev)
-                z_prev = torch.full([1,opt.nc_z,opt.nzx,opt.nzy], 0, device=opt.device)
-                z_prev = m_pad(z_prev)
-                noise_amp = 1
+                if (Gs == []):
+                    prev = torch.full([1,3,z_x,z_y], 0, device=opt.device)
+                    prev = m_pad(prev)
+                    z_prev = torch.full([1,3,z_x,z_y], 0, device=opt.device)
+                    z_prev = m_pad(z_prev)
+                    noise_amp = 1
+                else:
+                    prev = draw_concat(Gs,Zs,reals,NoiseAmp,'rand',m_pad,opt)
+                    prev = m_pad(prev)
+                    z_prev = draw_concat(Gs,Zs,reals,NoiseAmp,'rec',m_pad,opt)
+                    criterion = nn.MSELoss()
+                    RMSE = torch.sqrt(criterion(real, z_prev))
+                    opt.noise_amp = opt.noise_amp_init*RMSE
+                    z_prev = m_pad(z_prev)
+                
             else:
                 prev = draw_concat(Gs,Zs,reals,NoiseAmp,'rand',m_pad,opt)
                 prev = m_pad(prev)
@@ -88,7 +105,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             if (Gs == []):
                 noise = noise_
             else:
-                noise = opt.noise_amp * noise_ + prev
+                noise = noise_amp * noise_ + prev
             
             fake = G(noise.detach(), prev)
             output = D(fake.detach())
@@ -114,16 +131,14 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             errG.backward(retain_graph=True)
             if alpha != 0:
                 loss = nn.MSELoss()
-                z_opt = z_opt + alpha * (z_prev - z_opt)
-                z_opt = z_opt.detach()
-                z_in = noise_amp * noise + z_opt
-                rec_loss = alpha * loss(G(z_in.detach(),prev),real)
-                rec_loss.backward()
-                rec_loss = rec_loss.item()
+                Z_opt = noise_amp * z_opt + z_prev
+                rec_loss = alpha * loss(G(Z_opt.detach(),z_prev), real)
+                rec_loss.backward(retain_graph=True)
+                rec_loss = rec_loss.detach()
             else:
                 Z_opt = z_opt
                 rec_loss = 0
-                
+            
             optimizerG.step()
             
         if epoch % 25 == 0 or epoch == (opt.niter-1):
@@ -138,15 +153,16 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
                 
             
 def draw_concat(Gs,Zs,reals,NoiseAmp,mode,m_pad,opt):
+    real_init = reals[0]
+    G_z = torch.full([1,3, real_init.shape[2], real_init.shape[3]], 0, device=opt.device)
     if mode == "rand":
         if len(Gs) > 0:
-            G_z = torch.full(1,3, reals[0].shape, 0, device=opt.device)
             for i, (G, Z_opt, noise_amp, real_curr, real_next) in enumerate( zip(Gs, Zs, NoiseAmp, reals, reals[1:])):
                 if i == 0:
-                    z = generate_noise(1, [Z_opt.shape[2], Z_opt.shape[3]])
+                    z = generate_noise(1, [Z_opt.shape[2], Z_opt.shape[3]],opt)
                     z = z.expand(1,3,z.shape[2],z.shape[3])
                 else:
-                    z = generate_noise(3, [Z_opt.shape[2], Z_opt.shape[3]])
+                    z = generate_noise(3, [Z_opt.shape[2], Z_opt.shape[3]],opt)
                 z = m_pad(z)
                 G_z = m_pad(G_z)
                 z = z * noise_amp + G_z
@@ -160,7 +176,7 @@ def draw_concat(Gs,Zs,reals,NoiseAmp,mode,m_pad,opt):
                 G_z = m_pad(G_z)
                 z_in = noise_amp*Z_opt+G_z
                 G_z = G(z_in.detach(),G_z)
-                G_z = imresize(G_z,1/opt.scale_factor,opt)
+                G_z = imresize(G_z,1/opt.scale_factor)
                 G_z = G_z[:,:,0:real_next.shape[2],0:real_next.shape[3]]
     return G_z
         
@@ -169,9 +185,8 @@ def upsampling(im,sx,sy):
     m = nn.Upsample(size=[round(sx),round(sy)],mode='bilinear',align_corners=True)
     return m(im)
             
-def generate_noise(channel_z, size):
-    noise = torch.randn(1, 1, round(size[0]), round(size[1], device=opt.device))
-    noise = noise.expand(1, channel_z, round(size[0]), round(size[1]))
+def generate_noise(channel_z, size,opt):
+    noise = torch.randn(1, channel_z, round(size[0]), round(size[1]), device=opt.device)
     m = nn.Upsample(size=[round(size[0]),round(size[1])], mode='bilinear', align_corners=True)
     return m(noise)
 

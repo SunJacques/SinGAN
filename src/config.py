@@ -14,8 +14,7 @@ def get_arguments():
     parser.add_argument('--out',help='output folder',default='Output')
         
     #networks hyper parameters:
-    parser.add_argument('--nfc', type=int, default=32)
-    parser.add_argument('--min_nfc', type=int, default=32)
+    parser.add_argument('--n_filters', type=int, default=32)
     parser.add_argument('--ker_size',type=int,help='kernel size',default=3)
     parser.add_argument('--num_layer',type=int,help='number of layers',default=5)
     parser.add_argument('--stride',help='stride',default=1)
@@ -33,8 +32,8 @@ def get_arguments():
     parser.add_argument('--lr_g', type=float, default=0.0005, help='learning rate, default=0.0005')
     parser.add_argument('--lr_d', type=float, default=0.0005, help='learning rate, default=0.0005')
     parser.add_argument('--beta1', type=float, default=0.5, help='beta1 for adam. default=0.5')
-    parser.add_argument('--Gsteps',type=int, help='Generator inner steps',default=3)
-    parser.add_argument('--Dsteps',type=int, help='Discriminator inner steps',default=3)
+    parser.add_argument('--Gsteps',type=int, help='Generator inner steps',default=1)
+    parser.add_argument('--Dsteps',type=int, help='Discriminator inner steps',default=1)
     parser.add_argument('--lambda_grad',type=float, help='gradient penelty weight',default=0.1)
     parser.add_argument('--alpha',type=float, help='reconstruction loss weight',default=10)
 

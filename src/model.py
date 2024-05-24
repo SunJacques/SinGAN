@@ -9,11 +9,15 @@ def weights_init(m):
         m.bias.data.fill_(0)
         
 def init_models(opt, scale):
-    netG = Generator(opt, scale)
-    netD = Discriminator(opt, scale)
+    netG = Generator(opt, scale).to(opt.device)
+    netD = Discriminator(opt, scale).to(opt.device)
     
     netG.apply(weights_init)
     netD.apply(weights_init)
+    
+    print(netG)
+    print(netD)
+    return netD, netG
     
 class ConvBlock(nn.Sequential):
     def __init__(self, in_channel, out_channel, ker_size, padd, stride):
@@ -25,18 +29,18 @@ class ConvBlock(nn.Sequential):
 class Generator (nn.Module):
     def __init__(self, opt, scale):
         super(Generator, self).__init__()
-        N = opt.n_filters * pow(2, scale // 4)
+        N_init = opt.n_filters * pow(2, scale // 4)
         
-        self.head = ConvBlock(opt.in_channel, N, 3, 1, 1)
+        self.head = ConvBlock(in_channel=3, out_channel=N_init, ker_size=3, padd=0, stride=1)
         
         self.body = nn.Sequential()
         for i in range(3):
-            N = int(N / pow(2, i + 1))
-            block = ConvBlock(max(2*N,32), max(N,32), 3, 1, 1)
+            N = int(N_init / pow(2, i + 1))
+            block = ConvBlock(in_channel=max(2*N,32), out_channel=max(N,32), ker_size=3, padd=0, stride=1)
             self.body.add_module('block%d'%(i+1),block)
             
         self.tail = nn.Sequential(
-            nn.Conv2d(N, opt.out_channel, 3, 1, 1),
+            nn.Conv2d(in_channels=max(N,32), out_channels=3, kernel_size=3, stride=1, padding=0),
             nn.Tanh()
         )
         
@@ -52,17 +56,16 @@ class Generator (nn.Module):
 class Discriminator(nn.Module):
     def __init__(self,opt,scale):
         super(Discriminator,self).__init__()
-        N = opt.n_filters * pow(2, scale // 4)
-        
-        self.head = ConvBlock(opt.in_channel, N, 3, 1, 1)
+        N_init = opt.n_filters * pow(2, scale // 4)
+        self.head = ConvBlock(in_channel=3, out_channel=N_init, ker_size=3, padd=0, stride=1)
         
         self.body = nn.Sequential()
         for i in range(3):
-            N = int(N / pow(2, i))
-            block = ConvBlock(max(2*N,32), max(N,32), 3, 1, 1)
+            N = int(N_init / pow(2, i + 1))
+            block = ConvBlock(in_channel=max(2*N,32), out_channel=max(N,32), ker_size=3, padd=0, stride=1)
             self.body.add_module('block%d'%(i+1),block)
             
-        self.tail = nn.Conv2d(N, opt.out_channel, 3, 1, 1)
+        self.tail = nn.Conv2d(in_channels=max(N,32), out_channels=1, kernel_size=3, stride=1, padding=0)
         
     def forward(self, x):
         x = self.head(x)

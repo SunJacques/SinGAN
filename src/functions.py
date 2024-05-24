@@ -7,24 +7,24 @@ import torchvision.transforms as T
 
 def create_reals(opt):
     reals = []
-    real = Image.open("../img.jpeg")
+    real = read_image(opt)
     
     for i in range(0, opt.stop_scale + 1, 1):
-        scale = math.pow(opt.scale_factor,opt.stop_scale - i)
-        curr_real = imresize(real,scale,opt)
+        scale = math.pow(opt.scale_factor, opt.stop_scale - i)
+        curr_real = imresize(real,scale)
         reals.append(curr_real)
     return reals
 
 def imresize(img,scale_factor):
     if scale_factor < 1:
-        real = real.resize((int(img.size[0]*scale_factor), int(img.size[1]*scale_factor)), Image.ANTIALIAS)
+        real = T.Resize((int(img.shape[2]*scale_factor), int(img.shape[3]*scale_factor)), antialias=True)(img)
     else:
-        real = real.resize((int(img.size[0]*scale_factor), int(img.size[1]*scale_factor)))
+        real = T.Resize((int(img.shape[2]*scale_factor), int(img.shape[3]*scale_factor)))(img)
     return real
 
 def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     #print real_data.size()
-    alpha = torch.rand(1, 1)
+    alpha = torch.rand(1,1)
     alpha = alpha.expand(real_data.size())
     alpha = alpha.to(device)#cuda() #gpu) #if use_cuda else alpha
 
@@ -47,7 +47,7 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
 def read_image(opt):
     img = Image.open(opt.input_name)
     img = img.convert('RGB')
-    img = torch.Tensor(img)
+    img = T.ToTensor()(img)
     img = img.view(1,img.size(0),img.size(1),img.size(2))
     return img
 
@@ -64,23 +64,21 @@ def norm(x):
     return out.clamp(-1, 1)
 
 def adjust_scales2image(real_, opt):
-    opt.num_scales = math.ceil((math.log(math.pow(opt.min_size / (min(real_.shape[2], real_.shape[3])), 1), opt.scale_factor_init))) + 1
-    scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
+    opt.num_scales = math.ceil((math.log(math.pow(opt.min_size / (min(real_.shape[2], real_.shape[3])), 1), opt.scale_factor))) + 1
+    scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor))
     opt.stop_scale = opt.num_scales - scale2stop
     opt.scale1 = min(opt.max_size / max([real_.shape[2], real_.shape[3]]),1)  # min(250/max([real_.shape[0],real_.shape[1]]),1)
-    real = imresize(real_, opt.scale1, opt)
+    real = imresize(real_, opt.scale1)
     #opt.scale_factor = math.pow(opt.min_size / (real.shape[2]), 1 / (opt.stop_scale))
     opt.scale_factor = math.pow(opt.min_size/(min(real.shape[2],real.shape[3])),1/(opt.stop_scale))
-    scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor_init))
+    scale2stop = math.ceil(math.log(min([opt.max_size, max([real_.shape[2], real_.shape[3]])]) / max([real_.shape[2], real_.shape[3]]),opt.scale_factor))
     opt.stop_scale = opt.num_scales - scale2stop
 
 def convert_image_np(inp):
     if inp.shape[1]==3:
-        inp = denorm(inp)
         inp = inp[-1,:,:,:].to(torch.device('cpu'))
         inp = inp.numpy().transpose((1,2,0))
     else:
-        inp = denorm(inp)
         inp = inp[-1,-1,:,:].to(torch.device('cpu'))
         inp = inp.numpy().transpose((0,1))
 
@@ -88,7 +86,5 @@ def convert_image_np(inp):
     return inp
 
 def generate_dir2save(opt):
-    dir2save = None
-    if (opt.mode == 'train'):
-        dir2save = 'TrainedModels/%s/scale_factor=%f,alpha=%d' % (opt.input_name[:-4], opt.scale_factor_init,opt.alpha)
+    dir2save = 'TrainedModels/%s/scale_factor=%f,alpha=%d' % (opt.input_name.split("/")[-1], opt.scale_factor,opt.alpha)
     return dir2save
