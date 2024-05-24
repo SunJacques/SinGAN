@@ -31,7 +31,7 @@ class Generator (nn.Module):
         
         self.body = nn.Sequential()
         for i in range(3):
-            N = int(N / pow(2, i))
+            N = int(N / pow(2, i + 1))
             block = ConvBlock(max(2*N,32), max(N,32), 3, 1, 1)
             self.body.add_module('block%d'%(i+1),block)
             
@@ -41,6 +41,7 @@ class Generator (nn.Module):
         )
         
     def forward(self, x, y):
+        
         x = self.head(x)
         x = self.body(x)
         x = self.tail(x)
