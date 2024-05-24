@@ -7,8 +7,8 @@ if __name__ == '__main__':
     parser = get_arguments()
     opt = parser.parse_args()
     
-    opt.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    opt.input_name = '/Users/marc/Desktop/IMA206/SinGAN/img.jpeg'
+    opt.device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+    opt.input_name = '/home/infres/jsun-22/Documents/SinGAN/img/birds.jpeg'
     
     
     Gs = []

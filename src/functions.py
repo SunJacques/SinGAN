@@ -22,6 +22,10 @@ def imresize(img,scale_factor):
         real = T.Resize((int(img.shape[2]*scale_factor), int(img.shape[3]*scale_factor)))(img)
     return real
 
+def upsampling(img,sx,sy):
+    return T.Resize((sx,sy))(img)
+    
+
 def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
     #print real_data.size()
     alpha = torch.rand(1,1)
@@ -47,7 +51,7 @@ def calc_gradient_penalty(netD, real_data, fake_data, LAMBDA, device):
 def read_image(opt):
     img = Image.open(opt.input_name)
     img = img.convert('RGB')
-    img = T.ToTensor()(img)
+    img = T.ToTensor()(img).to(opt.device)
     img = img.view(1,img.size(0),img.size(1),img.size(2))
     return img
 

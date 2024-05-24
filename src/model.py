@@ -31,26 +31,25 @@ class Generator (nn.Module):
         super(Generator, self).__init__()
         N_init = opt.n_filters * pow(2, scale // 4)
         
-        self.head = ConvBlock(in_channel=3, out_channel=N_init, ker_size=3, padd=0, stride=1)
+        self.head = ConvBlock(in_channel=3, out_channel=N_init, ker_size=3, padd=1, stride=1)
         
         self.body = nn.Sequential()
         for i in range(3):
             N = int(N_init / pow(2, i + 1))
-            block = ConvBlock(in_channel=max(2*N,32), out_channel=max(N,32), ker_size=3, padd=0, stride=1)
+            block = ConvBlock(in_channel=max(2*N,32), out_channel=max(N,32), ker_size=3, padd=1, stride=1)
             self.body.add_module('block%d'%(i+1),block)
             
         self.tail = nn.Sequential(
-            nn.Conv2d(in_channels=max(N,32), out_channels=3, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(in_channels=max(N,32), out_channels=3, kernel_size=3, stride=1, padding=1),
             nn.Tanh()
         )
         
     def forward(self, x, y):
-        
         x = self.head(x)
         x = self.body(x)
         x = self.tail(x)
-        ind = int((y.shape[2]-x.shape[2])/2)
-        y = y[:,:,ind:(y.shape[2]-ind),ind:(y.shape[3]-ind)]
+        # ind = int((y.shape[2]-x.shape[2])/2)
+        # y = y[:,:,ind:(y.shape[2]-ind),ind:(y.shape[3]-ind)]
         return x + y
 
 class Discriminator(nn.Module):
