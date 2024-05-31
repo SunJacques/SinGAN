@@ -1,3 +1,6 @@
 .vscode/
 Test.ipynb
 .DS_store
+TrainedModels/
+src/__pycache__/
+RandomSamples/

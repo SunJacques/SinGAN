@@ -1,9 +1,11 @@
 import PIL.Image
 import torch
+import torch.nn as nn
 from PIL import Image
 import math
 import numpy as np
 import torchvision.transforms as T
+import os
 
 def create_reals(opt):
     reals = []
@@ -52,8 +54,8 @@ def read_image(opt):
     img = Image.open(opt.input_name)
     img = img.convert('RGB')
     img = T.ToTensor()(img).to(opt.device)
-    img = img.view(1,img.size(0),img.size(1),img.size(2))
-    return img
+    real = img.view(1,img.size(0),img.size(1),img.size(2))
+    return real
 
 def torch2numpy(img):
     img = img.squeeze(0).permute(1,2,0).numpy()
@@ -89,6 +91,35 @@ def convert_image_np(inp):
     inp = np.clip(inp,0,1)
     return inp
 
+def generate_noise(channel_z, size, opt):
+    noise = torch.randn(1, channel_z, round(size[0]), round(size[1]), device=opt.device)
+    m = nn.Upsample(size=[round(size[0]),round(size[1])], mode='bilinear', align_corners=True)
+    return m(noise)
+
 def generate_dir2save(opt):
-    dir2save = 'TrainedModels/%s/scale_factor=%f,alpha=%d' % (opt.input_name.split("/")[-1], opt.scale_factor,opt.alpha)
+    if opt.mode == 'train':
+        dir2save = 'TrainedModels/%s/scale_factor=%f,alpha=%d' % (opt.input_name.split("/")[-1], opt.scale_factor,opt.alpha)
+    elif opt.mode == 'random_samples':
+        dir2save = 'RandomSamples/%s/scale_factor=%f,alpha=%d' % (opt.input_name.split("/")[-1], opt.scale_factor,opt.alpha)
     return dir2save
+
+def load_trained_pyramid(opt, scale):
+    mode = opt.mode
+    opt.mode = 'train'
+    dir = generate_dir2save(opt)
+    
+    if(os.path.exists(dir)):
+        Gs = torch.load('%s/%d/Gs.pth' % (dir, scale))
+        Zs = torch.load('%s/%d/Zs.pth' % (dir, scale))
+        reals = torch.load('%s/%d/reals.pth' % (dir, scale))
+        NoiseAmp = torch.load('%s/%d/NoiseAmp.pth' % (dir, scale))
+    else:
+        print('no appropriate trained model is exist, please train first')
+    opt.mode = mode
+    
+    return Gs, Zs, reals, NoiseAmp
+
+def save_networks(netG,netD,z,opt):
+    torch.save(netG.state_dict(), '%s/netG.pth' % (opt.outf))
+    torch.save(netD.state_dict(), '%s/netD.pth' % (opt.outf))
+    torch.save(z, '%s/z_opt.pth' % (opt.outf))

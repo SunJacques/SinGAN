@@ -39,6 +39,12 @@ def train(opt, Gs, Zs, reals, NoiseAmp):
         Gs.append(G_curr)
         Zs.append(z_curr)
         NoiseAmp.append(last_noise_amp)
+        
+        torch.save(Gs, '%s/Gs.pth' % (opt.outf))
+        torch.save(Zs, '%s/Zs.pth' % (opt.outf))
+        torch.save(reals, '%s/reals.pth' % (opt.outf))
+        torch.save(NoiseAmp, '%s/NoiseAmp.pth' % (opt.outf))
+        
         scale += 1
 
 def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
@@ -56,7 +62,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
     
     
     for epoch in range(opt.niter):
-        print(epoch)
+        # print(epoch)
         if (Gs == []):
             z_opt = generate_noise(1, [z_x, z_y],opt)
             z_opt = z_opt.expand(1,3,z_opt.shape[2],z_opt.shape[3])
@@ -103,7 +109,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             output = D(fake.detach())
             errD_fake = output.mean()
             errD_fake.backward(retain_graph=True)
-            D_G_z = output.mean().item()
+            D_G_z = errD_fake.item()
 
             gradient_penalty = calc_gradient_penalty(D, real, fake, opt.lambda_grad, opt.device)
             gradient_penalty.backward()
@@ -133,16 +139,18 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             
             optimizerG.step()
             
-        print("loss D: ", errD.item())
-        print("loss G: ", errG.item())
-        print("loss rec: ", rec_loss.item())
+        # print("loss D: ", errD.item())
+        # print("loss G: ", errG.item())
+        # print("loss rec: ", rec_loss.item())
             
         if epoch % 25 == 0 or epoch == (opt.niter-1):
             print('scale %d:[%d/%d]' % (len(Gs), epoch, opt.niter))
             
-        if epoch % 25 == 0 or epoch == (opt.niter-1):
+        if epoch % 500 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), convert_image_np(fake.detach()), vmin=0, vmax=1)
             plt.imsave('%s/G(z_opt).png'    % (opt.outf),  convert_image_np(G(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
+
+    save_networks(G, D, z_opt,opt)
     
     return z_opt, G, noise_amp  
             
@@ -153,7 +161,7 @@ def draw_concat(Gs,Zs,reals,NoiseAmp,mode,opt):
     G_z = torch.full([1,3, real_init.shape[2], real_init.shape[3]], 0, device=opt.device)
     if mode == "rand":
         if len(Gs) > 0:
-            for i, (G, Z_opt, noise_amp, real_curr, real_next) in enumerate( zip(Gs, Zs, NoiseAmp, reals, reals[1:])):
+            for i, (G, Z_opt, noise_amp, real_next) in enumerate( zip(Gs, Zs, NoiseAmp, reals[1:])):
                 if i == 0:
                     z = generate_noise(1, [Z_opt.shape[2], Z_opt.shape[3]],opt)
                     z = z.expand(1, 3, z.shape[2], z.shape[3])
@@ -176,11 +184,6 @@ def upsampling(im,sx,sy):
     m = nn.Upsample(size=[round(sx),round(sy)],mode='bilinear',align_corners=True)
     return m(im)
             
-def generate_noise(channel_z, size,opt):
-    noise = torch.randn(1, channel_z, round(size[0]), round(size[1]), device=opt.device)
-    m = nn.Upsample(size=[round(size[0]),round(size[1])], mode='bilinear', align_corners=True)
-    return m(noise)
-
 def reset_grads(model,require_grad):
     for p in model.parameters():
         p.requires_grad_(require_grad)

@@ -15,8 +15,6 @@ def init_models(opt, scale):
     netG.apply(weights_init)
     netD.apply(weights_init)
     
-    print(netG)
-    print(netD)
     return netD, netG
     
 class ConvBlock(nn.Sequential):
