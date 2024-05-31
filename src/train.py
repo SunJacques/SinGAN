@@ -49,6 +49,9 @@ def train(opt, Gs, Zs, reals, NoiseAmp):
 
 def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
     real = reals[len(Gs)]
+    errD2plot = []
+    errG2plot = []
+    noise_amp_list = []
     
     z_x = real.shape[2]
     z_y = real.shape[3]
@@ -117,6 +120,8 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             errD = errD_real + errD_fake + gradient_penalty
             optimizerD.step()
             
+            errD2plot.append(errD.detach())
+            
             
         ############################
         # (2) Update G network: maximize D(G(z))
@@ -138,6 +143,10 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
                 rec_loss = 0
             
             optimizerG.step()
+        
+        errG2plot.append(errG.detach() + rec_loss)
+        
+        noise_amp_list.append(noise_amp)
             
         # print("loss D: ", errD.item())
         # print("loss G: ", errG.item())
@@ -146,11 +155,12 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
         if epoch % 25 == 0 or epoch == (opt.niter-1):
             print('scale %d:[%d/%d]' % (len(Gs), epoch, opt.niter))
             
-        if epoch % 500 == 0 or epoch == (opt.niter-1):
+        if epoch % 100 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), convert_image_np(fake.detach()), vmin=0, vmax=1)
             plt.imsave('%s/G(z_opt).png'    % (opt.outf),  convert_image_np(G(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
 
-    save_networks(G, D, z_opt,opt)
+    save_networks(G, D, z_opt, opt)
+    save_plot(errG2plot, errD2plot, noise_amp_list, opt)
     
     return z_opt, G, noise_amp  
             
@@ -178,13 +188,3 @@ def draw_concat(Gs,Zs,reals,NoiseAmp,mode,opt):
                 G_z = G(z_in.detach(),G_z)
                 G_z = upsampling(G_z, real_next.shape[2], real_next.shape[3])
     return G_z
-        
-            
-def upsampling(im,sx,sy):
-    m = nn.Upsample(size=[round(sx),round(sy)],mode='bilinear',align_corners=True)
-    return m(im)
-            
-def reset_grads(model,require_grad):
-    for p in model.parameters():
-        p.requires_grad_(require_grad)
-    return model

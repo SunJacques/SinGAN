@@ -6,6 +6,7 @@ import math
 import numpy as np
 import torchvision.transforms as T
 import os
+import pandas as pd
 
 def create_reals(opt):
     reals = []
@@ -96,6 +97,15 @@ def generate_noise(channel_z, size, opt):
     m = nn.Upsample(size=[round(size[0]),round(size[1])], mode='bilinear', align_corners=True)
     return m(noise)
 
+def upsampling(im,sx,sy):
+    m = nn.Upsample(size=[round(sx),round(sy)],mode='bilinear',align_corners=True)
+    return m(im)
+
+def reset_grads(model,require_grad):
+    for p in model.parameters():
+        p.requires_grad_(require_grad)
+    return model
+
 def generate_dir2save(opt):
     if opt.mode == 'train':
         dir2save = 'TrainedModels/%s/scale_factor=%f,alpha=%d' % (opt.input_name.split("/")[-1], opt.scale_factor,opt.alpha)
@@ -123,3 +133,29 @@ def save_networks(netG,netD,z,opt):
     torch.save(netG.state_dict(), '%s/netG.pth' % (opt.outf))
     torch.save(netD.state_dict(), '%s/netD.pth' % (opt.outf))
     torch.save(z, '%s/z_opt.pth' % (opt.outf))
+    
+def save_plot(errG2plot, errD2plot, noise_amp_list, opt):
+    '''
+    Save to csv
+    '''
+    dir = opt.out_
+    
+    if os.path.exists("%s/D_plot.csv" % dir):
+        dfG = pd.read_csv("%s/G_plot.csv" % dir)
+        dfD = pd.read_csv("%s/D_plot.csv" % dir)
+        dfNoise = pd.read_csv("%s/noise_amp_plot.csv" % dir)
+    else:
+        dfG = pd.DataFrame()
+        dfD = pd.DataFrame()
+        dfNoise = pd.DataFrame()
+        
+    dfG['scale %d' % len(dfG.columns)] = pd.DataFrame(torch.tensor(errG2plot, device = "cpu").numpy())
+    dfD['scale %d' % len(dfD.columns) ] = pd.DataFrame(torch.tensor(errD2plot, device = "cpu").numpy())
+    dfNoise['scale %d' % len(dfNoise.columns)] = pd.DataFrame(torch.tensor(noise_amp_list, device = "cpu").numpy())
+    
+    dfG.to_csv("%s/G_plot.csv" % dir, index=False)
+    dfD.to_csv("%s/D_plot.csv" % dir, index=False)
+    dfNoise.to_csv("%s/noise_amp_plot.csv" % dir, index=False)
+        
+        
+    

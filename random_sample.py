@@ -7,7 +7,7 @@ if __name__ == '__main__':
     parser = get_arguments()
     opt = parser.parse_args()
     
-    opt.device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+    opt.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     opt.input_name = '/home/infres/jsun-22/Documents/SinGAN/img/balloons.jpeg'
     opt.mode = 'random_samples'
     
@@ -17,7 +17,7 @@ if __name__ == '__main__':
     NoiseAmp = []
     dir2save = generate_dir2save(opt)
     num_samples = 20
-    stop_scale = 7
+    stop_scale = 8
     
     real = read_image(opt)
     adjust_scales2image(real, opt)
