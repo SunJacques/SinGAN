@@ -143,6 +143,8 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
                 rec_loss = 0
             
             optimizerG.step()
+            
+            fake = G(noise.detach(), prev)
         
         errG2plot.append(errG.detach() + rec_loss)
         
