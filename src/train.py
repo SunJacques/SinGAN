@@ -129,22 +129,21 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             
         for j in range(opt.Gsteps):
             G.zero_grad()
+            fake = G(noise.detach(), prev)
             output = D(fake)
             errG = -output.mean()
-            errG.backward(retain_graph=True)
+            errG.backward()
             if alpha != 0:
                 loss = nn.MSELoss()
                 Z_opt = noise_amp * z_opt + z_prev
                 rec_loss = alpha * loss(G(Z_opt.detach(),z_prev), real)
-                rec_loss.backward(retain_graph=True)
+                rec_loss.backward()
                 rec_loss = rec_loss.detach()
             else:
                 Z_opt = z_opt
                 rec_loss = 0
             
             optimizerG.step()
-            
-            fake = G(noise.detach(), prev)
         
         errG2plot.append(errG.detach() + rec_loss)
         
