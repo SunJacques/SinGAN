@@ -10,13 +10,13 @@ if __name__ == '__main__':
     opt.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     opt.input_name = '/home/infres/jsun-22/Documents/SinGAN/img/balloons.jpeg'
     opt.mode = 'random_samples'
+    opt.num_samples = 20
     
     Gs = []
     Zs = []
     reals = []
     NoiseAmp = []
     dir2save = generate_dir2save(opt)
-    num_samples = 20
     stop_scale = 8
     
     real = read_image(opt)
@@ -29,7 +29,7 @@ if __name__ == '__main__':
     
     Gs, Zs, reals, NoiseAmp = load_trained_pyramid(opt, scale = stop_scale)
     
-    for img_num in range (num_samples):
+    for img_num in range (opt.num_samples):
         real_init = reals[0]
         I_prev = torch.full([1,3, real_init.shape[2], real_init.shape[3]], 0, device=opt.device)
         
