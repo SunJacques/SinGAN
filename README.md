@@ -1,7 +1,3 @@
-Certainly! Here is a sample README file for a repository containing a simpler implementation of the SinGAN paper, with code updated for PyTorch 2.2 compatibility and improved readability:
-
----
-
 # SinGAN: Learning a Generative Model from a Single Natural Image
 
 ## Overview
