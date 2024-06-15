@@ -33,7 +33,7 @@ if __name__ == '__main__':
         real_init = reals[0]
         I_prev = torch.full([1,3, real_init.shape[2], real_init.shape[3]], 0, device=opt.device)
         
-        for i, (G, Z_opt, noise_amp, real_next) in enumerate(zip(Gs, Zs, NoiseAmp, reals[1:])):
+        for i, (G, Z_opt, noise_amp) in enumerate(zip(Gs, Zs, NoiseAmp)):
             G.eval()
             nzx = Z_opt.shape[2] 
             nzy = Z_opt.shape[3] 
@@ -47,6 +47,7 @@ if __name__ == '__main__':
             z_in = noise_amp * (z_curr) + I_prev
             I_curr = G(z_in.detach(), I_prev)
             if i != stop_scale:
+                real_next = reals[i+1]
                 I_prev = upsampling(I_curr, real_next.shape[2], real_next.shape[3])
             
         plt.imsave('%s/fake%d.png'    % (dir2save,img_num),  convert_image_np(I_curr), vmin=0, vmax=1)

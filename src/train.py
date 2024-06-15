@@ -9,7 +9,6 @@ import os
 from src.model import *
 
 def train(opt, Gs, Zs, reals, NoiseAmp):
-    torch.autograd.set_detect_anomaly(True)
     scale = 0
     reals = create_reals(opt)
     
