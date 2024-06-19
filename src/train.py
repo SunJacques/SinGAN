@@ -82,7 +82,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             
             output = D(real).to(opt.device)
             errD_real = -output.mean()
-            errD_real.backward(retain_graph=True)
+            errD_real.backward()
             D_x = -errD_real.item()
             
             # train with fake
@@ -110,7 +110,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             fake = G(noise.detach(), prev)
             output = D(fake.detach())
             errD_fake = output.mean()
-            errD_fake.backward(retain_graph=True)
+            errD_fake.backward()
             D_G_z = errD_fake.item()
 
             gradient_penalty = calc_gradient_penalty(D, real, fake, opt.lambda_grad, opt.device)
@@ -155,7 +155,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
         if epoch % 25 == 0 or epoch == (opt.niter-1):
             print('scale %d:[%d/%d]' % (len(Gs), epoch, opt.niter))
             
-        if epoch % 100 == 0 or epoch == (opt.niter-1):
+        if epoch % 50 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), convert_image_np(fake.detach()), vmin=0, vmax=1)
             plt.imsave('%s/G(z_opt).png'    % (opt.outf),  convert_image_np(G(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
 

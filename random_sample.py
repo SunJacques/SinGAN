@@ -7,7 +7,7 @@ if __name__ == '__main__':
     parser = get_arguments()
     opt = parser.parse_args()
     
-    opt.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
+    opt.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     opt.input_name = '/home/infres/jsun-22/Documents/SinGAN/img/balloons.jpeg'
     opt.mode = 'random_samples'
     opt.num_samples = 20
