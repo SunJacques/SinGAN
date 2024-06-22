@@ -10,13 +10,13 @@ if __name__ == '__main__':
     opt.device = torch.device("cuda:1" if torch.cuda.is_available() else "cpu")
     opt.input_name = 'img/balloons.jpeg'
     opt.mode = 'random_samples'
+    opt.num_samples = 20
     
     Gs = []
     Zs = []
     reals = []
     NoiseAmp = []
     dir2save = generate_dir2save(opt)
-    num_samples = 20
     stop_scale = 8
     
     real = read_image(opt)
@@ -29,11 +29,11 @@ if __name__ == '__main__':
     
     Gs, Zs, reals, NoiseAmp = load_trained_pyramid(opt, scale = stop_scale)
     
-    for img_num in range (num_samples):
+    for img_num in range (opt.num_samples):
         real_init = reals[0]
         I_prev = torch.full([1,3, real_init.shape[2], real_init.shape[3]], 0, device=opt.device)
         
-        for i, (G, Z_opt, noise_amp, real_next) in enumerate(zip(Gs, Zs, NoiseAmp, reals[1:])):
+        for i, (G, Z_opt, noise_amp) in enumerate(zip(Gs, Zs, NoiseAmp)):
             G.eval()
             nzx = Z_opt.shape[2] 
             nzy = Z_opt.shape[3] 
@@ -47,6 +47,7 @@ if __name__ == '__main__':
             z_in = noise_amp * (z_curr) + I_prev
             I_curr = G(z_in.detach(), I_prev)
             if i != stop_scale:
+                real_next = reals[i+1]
                 I_prev = upsampling(I_curr, real_next.shape[2], real_next.shape[3])
             
         plt.imsave('%s/fake%d.png'    % (dir2save,img_num),  convert_image_np(I_curr), vmin=0, vmax=1)

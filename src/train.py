@@ -9,7 +9,6 @@ import os
 from src.model import *
 
 def train(opt, Gs, Zs, reals, NoiseAmp):
-    torch.autograd.set_detect_anomaly(True)
     scale = 0
     reals = create_reals(opt)
     
@@ -83,7 +82,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             
             output = D(real).to(opt.device)
             errD_real = -output.mean()
-            errD_real.backward(retain_graph=True)
+            errD_real.backward()
             D_x = -errD_real.item()
             
             # train with fake
@@ -111,7 +110,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             fake = G(noise.detach(), prev)
             output = D(fake.detach())
             errD_fake = output.mean()
-            errD_fake.backward(retain_graph=True)
+            errD_fake.backward()
             D_G_z = errD_fake.item()
 
             gradient_penalty = calc_gradient_penalty(D, real, fake, opt.lambda_grad, opt.device)
@@ -129,22 +128,21 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
             
         for j in range(opt.Gsteps):
             G.zero_grad()
+            fake = G(noise.detach(), prev)
             output = D(fake)
             errG = -output.mean()
-            errG.backward(retain_graph=True)
+            errG.backward()
             if alpha != 0:
                 loss = nn.MSELoss()
                 Z_opt = noise_amp * z_opt + z_prev
                 rec_loss = alpha * loss(G(Z_opt.detach(),z_prev), real)
-                rec_loss.backward(retain_graph=True)
+                rec_loss.backward()
                 rec_loss = rec_loss.detach()
             else:
                 Z_opt = z_opt
                 rec_loss = 0
             
             optimizerG.step()
-            
-            fake = G(noise.detach(), prev)
         
         errG2plot.append(errG.detach() + rec_loss)
         
@@ -157,7 +155,7 @@ def train_single_scale(D, G, reals, Gs, Zs, NoiseAmp, opt):
         if epoch % 25 == 0 or epoch == (opt.niter-1):
             print('scale %d:[%d/%d]' % (len(Gs), epoch, opt.niter))
             
-        if epoch % 100 == 0 or epoch == (opt.niter-1):
+        if epoch % 50 == 0 or epoch == (opt.niter-1):
             plt.imsave('%s/fake_sample.png' %  (opt.outf), convert_image_np(fake.detach()), vmin=0, vmax=1)
             plt.imsave('%s/G(z_opt).png'    % (opt.outf),  convert_image_np(G(Z_opt.detach(), z_prev).detach()), vmin=0, vmax=1)
 

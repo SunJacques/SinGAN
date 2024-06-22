@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
-
+from torchvision.models.inception import Inception_V3_Weights
 
 class InceptionV3(nn.Module):
     """Pretrained InceptionV3 network returning feature maps"""
