@@ -39,7 +39,7 @@ except ImportError:
     # If not tqdm is not available, provide a mock version of it
     def tqdm(x): return x
 
-from metric.inception import InceptionV3
+from inception import InceptionV3
 import torchvision
 import numpy
 import scipy
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
     path1 = "/Users/marc/Desktop/IMA206/SinGAN/img/bois.png"
-    path2 = "/Users/marc/Desktop/IMA206/SinGAN/RandomSamples/balloons.jpeg/scale_factor=0.750000,alpha=11/"
+    path2 = "/Users/marc/Desktop/IMA206/SinGAN/RandomSamples/balloons/scale_factor=0.750000,alpha=11/"
     # path2 = "/Users/marc/Desktop/IMA206/SinGAN/RandomSamples/balloons.jpeg/scale_factor=0.750000,alpha=11/"
 
     sifid_values = calculate_sifid_given_paths(path1,path2,1,args.gpu!='',64)
